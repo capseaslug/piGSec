@@ -1,31 +1,43 @@
 import tkinter as tk
 import bluetooth
 import random
+import os
 
-# Set of allowed MAC addresses
+# Set of allowed and blocked MAC addresses
 allowed_devices = set()
+blocked_devices = set()
 
-# Flag to indicate whether MAC address filtering is enabled
-mac_address_filtering = False
+# File paths for whitelist and blacklist
+whitelist_file = "whitelist.txt"
+blacklist_file = "blacklist.txt"
+
+# Function to create the whitelist and blacklist files during setup
+def create_files():
+    if not os.path.exists(whitelist_file):
+        with open(whitelist_file, "w"):
+            pass
+
+    if not os.path.exists(blacklist_file):
+        with open(blacklist_file, "w"):
+            pass
 
 # Function to load the whitelist from a file
 def load_whitelist():
-    try:
-        with open("whitelist.txt", "r") as file:
-            for line in file:
-                allowed_devices.add(line.strip())
-    except FileNotFoundError:
-        pass
+    with open(whitelist_file, "r") as file:
+        for line in file:
+            allowed_devices.add(line.strip())
+
+# Function to load the blacklist from a file
+def load_blacklist():
+    with open(blacklist_file, "r") as file:
+        for line in file:
+            blocked_devices.add(line.strip())
 
 # Function to save the whitelist to a file
 def save_whitelist():
-    with open("whitelist.txt", "w") as file:
+    with open(whitelist_file, "w") as file:
         for mac_address in allowed_devices:
             file.write(mac_address + "\n")
-
-# Function to check if a device's MAC address is allowed
-def is_allowed_device(addr):
-    return addr in allowed_devices
 
 # Function to scan for nearby Bluetooth devices
 def scan_devices():
@@ -33,29 +45,28 @@ def scan_devices():
     nearby_devices = bluetooth.discover_devices(lookup_names=True, duration=8, lookup_class=True)
 
     for addr, name, device_class in nearby_devices:
-        if mac_address_filtering and not is_allowed_device(addr):
+        if addr in blocked_devices:
             # Block the device from connecting.
             bluetooth.cancel_discovery()
-            result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
+            result_label.config(text="Blocked device attempting to connect! MAC address: " + addr)
         else:
-            # Check if the device is authenticated
-            if not authentication.is_authenticated(addr):
+            if not is_authenticated(addr):
                 result_label.config(text="Device is not authenticated!")
             else:
                 # Check if the file is malicious
-                if av.is_malicious(addr):
+                if is_malicious(addr):
                     result_label.config(text="File from unauthorized device is malicious!")
                 else:
                     # Check if the packet is valid
-                    if not packet_filtering.is_valid_packet(addr):
+                    if not is_valid_packet(addr):
                         result_label.config(text="Invalid packet received!")
                     else:
                         # Check if the firmware is up to date
-                        if not firmware_updates.is_up_to_date(addr):
+                        if not is_up_to_date(addr):
                             result_label.config(text="Firmware is not up to date!")
                         else:
                             # Check if the user is educated about security
-                            if not user_education.is_educated(addr):
+                            if not is_educated(addr):
                                 result_label.config(text="User is not educated about security!")
                             else:
                                 # The device is connected and secure!
@@ -81,44 +92,31 @@ def secure_pairing(addr):
         # The PIN codes do not match
         result_label.config(text="PIN codes do not match!")
 
-# Function to monitor incoming Bluetooth connections for unauthorized devices
-def monitor_connections():
-    while True:
-        client_sock, client_info = server_sock.accept()
-        client_mac = client_info[0]
+# Function to check if a device is authenticated (placeholder, you need to implement this)
+def is_authenticated(addr):
+    return True
 
-        if client_mac not in allowed_devices:
-            # Send a warning message to the user
-            result_label.config(text="Unauthorized device attempting to connect!")
+# Function to check if a file is malicious (placeholder, you need to implement this)
+def is_malicious(addr):
+    return False
 
-        client_sock.close()
+# Function to check if a packet is valid (placeholder, you need to implement this)
+def is_valid_packet(addr):
+    return True
 
-# Function to check for Man-in-the-Middle (MITM) attacks
-def check_for_mitm_attacks():
-    # Implement logic to check for MITM attacks.
-    # For example, you could check for unexpected changes in the Bluetooth pairing process.
-    # If a MITM attack is detected, alert the user and take appropriate action.
+# Function to check if the firmware is up to date (placeholder, you need to implement this)
+def is_up_to_date(addr):
+    return True
 
-    # Check if the Bluetooth pairing process is following the expected sequence of events.
-    # If not, it may be a sign of a MITM attack.
-
-    # Alert the user and take appropriate action, such as aborting the pairing process.
-
-# Function to enable password-protected pairing
-def enable_password_protected_pairing():
-    # Implement logic to enable password-protected pairing.
-    # This will require users to enter a PIN or password before they can pair with the Raspberry Pi.
-
-    password = input("Enter a password for password-protected pairing: ")
-
-    # Save the password to a file.
-    with open("password.txt", "w") as file:
-        file.write(password)
+# Function to check if the user is educated about security (placeholder, you need to implement this)
+def is_educated(addr):
+    return True
 
 # Main application loop
 def main():
-    # Load the whitelist from a file.
+    create_files()
     load_whitelist()
+    load_blacklist()
 
     # Create the main window.
     root = tk.Tk()
