@@ -2,8 +2,9 @@ import gi
 import threading
 import time
 import tkinter as tk
-import pybluez
 import os
+import pydbus
+from pydbus import SystemBus
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("AppIndicator3", "0.1")
@@ -37,18 +38,29 @@ def save_whitelist():
         for mac_address in allowed_devices:
             file.write(mac_address + "\n")
 
-# Function to scan for nearby Bluetooth devices using pybluez
+# Function to scan for nearby Bluetooth devices using bluez and pydbus
 def scan_devices():
     devices_list.delete(0, tk.END)  # Clear the list box
-    nearby_devices = pybluez.discover_devices(duration=8, lookup_names=True, lookup_class=True)
+    bus = SystemBus()
+    manager = bus.get("org.bluez", "/")
 
-    for addr, name, device_class in nearby_devices:
-        if addr not in allowed_devices:
+    # Get a list of Bluetooth devices
+    devices = manager.GetManagedObjects()
+    for path, interfaces in devices.items():
+        device = interfaces.get("org.bluez.Device1")
+        if not device:
+            continue
+
+        mac_address = device["Address"]
+        name = device["Name"]
+        device_class = device["Class"]
+
+        if mac_address not in allowed_devices:
             # Block the device from connecting.
-            pybluez.cancel_discovery()
-            print("Unauthorized device attempting to connect! MAC address:", addr)
+            result_label.config(text="Unauthorized device attempting to connect! MAC address: " + mac_address)
         else:
-            print("Device is allowed:", addr, name, device_class)
+            # The device is allowed
+            devices_list.insert(tk.END, f"{mac_address} - {name} - {device_class}")
 
 # Function to create the taskbar menu
 def create_menu():
@@ -95,16 +107,37 @@ def main():
 
     # Create the app indicator
     APPINDICATOR_ID = "bluetooth_security_indicator"
-    indicator = appindicator.Indicator.new(
-        APPINDICATOR_ID,
-        os.path.abspath("icon.png"),
-        appindicator.IndicatorCategory.SYSTEM_SERVICES,
-    )
+    indicator = appindicator.Indicator.new(APPINDICATOR_ID, os.path.abspath("icon.png"), appindicator.IndicatorCategory.SYSTEM_SERVICES)
     indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
     indicator.set_menu(create_menu())
 
-    # Start the GTK main loop
-    gtk.main()
+    # Create the main window.
+    root = tk.Tk()
+    root.title("Bluetooth Security App")
+
+    # Create a label to display the status messages.
+    global result_label
+    result_label = tk.Label(root)
+    result_label.pack()
+
+    # Create a button to scan for nearby devices.
+    scan_button = tk.Button(root, text="Scan", command=scan_devices)
+    scan_button.pack()
+
+    # Create a list box to display the nearby devices.
+    devices_list = tk.Listbox(root)
+    devices_list.pack()
+
+    # Create a checkbox to enable/disable MAC address filtering.
+    mac_address_filtering_checkbox = tk.Checkbutton(root, text="Enable MAC address filtering", onvalue=True, offvalue=False)
+    mac_address_filtering_checkbox.pack()
+
+    # Create a button to pair with a selected device.
+    pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR)))
+    pair_button.pack()
+
+    # Start the main loop.
+    root.mainloop()
 
     # Save the whitelist before exiting the application.
     save_whitelist()
