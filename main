@@ -1,0 +1,36 @@
+import tkinter as tk
+
+class AboutDialog(tk.Toplevel):
+    def __init__(self, master):
+        super().__init__(master)
+        self.title("About Pigsuite")
+
+        # Create the system summary.
+        sys_summary = tk.Label(self, text="System Summary")
+        sys_summary.pack()
+
+        sys_info = tk.Label(self, text="* Python version: {}".format(sys.version_info))
+        sys_info.pack()
+
+        sys_info = tk.Label(self, text="* Operating system: {}".format(platform.system()))
+        sys_info.pack()
+
+        # Create the version information.
+        version_info = tk.Label(self, text="Version Information")
+        version_info.pack()
+
+        version = tk.Label(self, text="* Version: 0.1.0")
+        version.pack()
+
+        # Create the update function.
+        update_button = tk.Button(self, text="Update", command=self._update)
+        update_button.pack()
+
+    def _update(self):
+        url = "https://github.com/capseaslug/piGSec/tree/main"
+        webbrowser.open(url)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    dialog = AboutDialog(root)
+    dialog.mainloop()
