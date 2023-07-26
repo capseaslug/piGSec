@@ -1,24 +1,139 @@
-# Check if MAC address filtering is enabled.
-if mac_address_filtering_checkbox.get():
-    mac_address_filtering = True
-else:
-    mac_address_filtering = False
+import tkinter as tk
+import bluetooth
+import random
+import os
 
-# Scan for nearby devices.
-scan_devices()
+# Set of allowed and blocked MAC addresses
+allowed_devices = set()
+blocked_devices = set()
 
-# Display the list of nearby devices.
-for addr, name, device_class in nearby_devices:
-    if mac_address_filtering and not addr in allowed_devices:
-        # Block the device from connecting.
-        bluetooth.cancel_discovery()
-        result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
+# File paths for whitelist and blacklist
+whitelist_file = "whitelist.txt"
+blacklist_file = "blacklist.txt"
+
+# Function to create the whitelist and blacklist files during setup
+def create_files():
+    if not os.path.exists(whitelist_file):
+        open(whitelist_file, "a").close()
+
+    if not os.path.exists(blacklist_file):
+        open(blacklist_file, "a").close()
+
+# Function to load the whitelist from a file
+def load_whitelist():
+    with open(whitelist_file, "r") as file:
+        for line in file:
+            allowed_devices.add(line.strip())
+
+# Function to load the blacklist from a file
+def load_blacklist():
+    with open(blacklist_file, "r") as file:
+        for line in file:
+            blocked_devices.add(line.strip())
+
+# Function to save the whitelist to a file
+def save_whitelist():
+    with open(whitelist_file, "w") as file:
+        for mac_address in allowed_devices:
+            file.write(mac_address + "\n")
+
+# Function to scan for nearby Bluetooth devices
+def scan_devices():
+    devices_list.delete(0, tk.END)  # Clear the list box
+    nearby_devices = bluetooth.discover_devices(lookup_names=True, duration=8, lookup_class=True)
+
+    for addr, name, device_class in nearby_devices:
+        if addr in blocked_devices:
+            # Block the device from connecting.
+            bluetooth.cancel_discovery()
+            result_label.config(text="Blocked device attempting to connect! MAC address: " + addr)
+        elif mac_address_filtering and addr not in allowed_devices:
+            # Block the device from connecting.
+            bluetooth.cancel_discovery()
+            result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
+        else:
+            if not is_authenticated(addr):
+                result_label.config(text="Device is not authenticated!")
+            else:
+                # Check if the file is malicious
+                if is_malicious(addr):
+                    result_label.config(text="File from unauthorized device is malicious!")
+                else:
+                    # Check if the packet is valid
+                    if not is_valid_packet(addr):
+                        result_label.config(text="Invalid packet received!")
+                    else:
+                        # Check if the firmware is up to date
+                        if not is_up_to_date(addr):
+                            result_label.config(text="Firmware is not up to date!")
+                        else:
+                            # Check if the user is educated about security
+                            if not is_educated(addr):
+                                result_label.config(text="User is not educated about security!")
+                            else:
+                                # The device is connected and secure!
+                                devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
+
+# Function to pair with a selected device securely
+def secure_pairing(addr):
+    # Implement secure pairing logic here
+    # For example, you could use SSP or a PIN code for pairing.
+    # Be sure to check the security requirements of your specific use case.
+
+    # Generate a random PIN code
+    pin = "%04d" % random.randint(1000, 9999)
+
+    # Prompt the user to enter the PIN code
+    pin_entry = input("Enter the PIN code: ")
+
+    # Check if the PIN codes match
+    if pin == pin_entry:
+        # Pair with the device
+        result_label.config(text=f"Paired with {addr} securely.")
     else:
-        devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
+        # The PIN codes do not match
+        result_label.config(text="PIN codes do not match!")
 
-# Create a button to pair with a selected device.
-pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR)))
-pair_button.pack()
+# Main application loop
+def main():
+    create_files()
+    load_whitelist()
+    load_blacklist()
 
-# Start the main loop.
-root.mainloop()
+    # Create the main window.
+    root = tk.Tk()
+    root.title("Bluetooth Security App")
+
+    # Create a label to display the status messages.
+    result_label = tk.Label(root)
+    result_label.pack()
+
+    # Create a button to scan for nearby devices.
+    scan_button = tk.Button(root, text="Scan", command=scan_devices)
+    scan_button.pack()
+
+    # Create a list box to display the nearby devices.
+    devices_list = tk.Listbox(root)
+    devices_list.pack()
+
+    # Create a checkbox to enable/disable MAC address filtering.
+    mac_address_filtering_var = tk.BooleanVar()
+    mac_address_filtering_checkbox = tk.Checkbutton(root, text="Enable MAC address filtering", variable=mac_address_filtering_var)
+    mac_address_filtering_checkbox.pack()
+
+    # Create a button to pair with a selected device.
+    pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR).split(" - ")[0]))
+    pair_button.pack()
+
+    # Start the main loop.
+    root.mainloop()
+
+    # Save the whitelist before exiting the application.
+    allowed_devices.clear()
+    for device in devices_list.get(0, tk.END):
+        addr = device.split(" - ")[0]
+        allowed_devices.add(addr)
+    save_whitelist()
+
+if __name__ == "__main__":
+    main()
