@@ -1,7 +1,8 @@
-
 import tkinter as tk
 import tkinter.ttk as ttk
 import serial
+import os
+import random
 
 def scan_for_openthread_devices():
   # Scan for OpenThread devices.
@@ -48,6 +49,28 @@ def pair_with_microbit():
   with serial.Serial('COM3', 9600, timeout=1) as ser:
     ser.write('pair_with_microbit'.encode('utf-8'))
 
+def flash_firmware():
+  # Flash the firmware of the microbit with the Python script.
+  with serial.Serial('COM3', 9600, timeout=1) as ser:
+    ser.write('flash_firmware'.encode('utf-8'))
+    ser.write(os.path.abspath('your_python_script.py').encode('utf-8'))
+
+def create_icon(type):
+  # Create an icon for the list item.
+  if type == 'btle':
+    icon = 'btle.png'
+  elif type == 'bluetooth le':
+    icon = 'bluetoothle.png'
+  else:
+    icon = 'ble.png'
+  return tk.PhotoImage(file=icon)
+
+def create_list_item(type, text, background_color):
+  # Create a list item with an icon and text.
+  icon = create_icon(type)
+  item = tk.Label(text=text, image=icon, compound='left', bg=background_color)
+  item.pack()
+
 def main():
   # Create the window.
   window = tk.Tk()
@@ -55,16 +78,14 @@ def main():
   # Set the theme to dark.
   ttk.theme_use('dark')
 
-  # Create the button to flash the device.
-  flash_device_button = tk.Button(window, text='Flash Device', command=flash_device)
-  flash_device_button.pack()
+  # Create the list.
+  listbox = tk.Listbox(window)
+  listbox.pack()
 
-  # Create the button to pair with the microbit.
-  pair_with_microbit_button = tk.Button(window, text='Pair with Microbit', command=pair_with_microbit)
-  pair_with_microbit_button.pack()
-
-  # Start the window.
-  window.mainloop()
-
-if __name__ == "__main__":
-  main()
+  # Add the list items.
+  create_list_item('btle', 'Bluetooth Low Energy', '#c0ffee')
+  create_list_item('bluetooth le', 'Bluetooth Low Energy', '#c0ffee')
+  create_list_item('ble', 'Bluetooth Low Energy', '#c0ffee')
+  create_list_item('btle', 'OpenThread', '#ff7f50')
+  create_list_item('bluetooth le', 'OpenThread', '#ff7f50')
+  create_list_item('ble', 'OpenThread', '#ff7f50
