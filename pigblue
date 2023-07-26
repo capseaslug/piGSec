@@ -1,12 +1,32 @@
 import tkinter as tk
 import bluetooth
 import av
+import encryption
+import authentication
+import packet_filtering
+import firmware_updates
+import user_education
 
 # Set of allowed MAC addresses
 allowed_devices = set()
 
 # Flag to indicate whether MAC address filtering is enabled
 mac_address_filtering = False
+
+# Function to load the whitelist from a file
+def load_whitelist():
+    try:
+        with open("whitelist.txt", "r") as file:
+            for line in file:
+                allowed_devices.add(line.strip())
+    except FileNotFoundError:
+        pass
+
+# Function to save the whitelist to a file
+def save_whitelist():
+    with open("whitelist.txt", "w") as file:
+        for mac_address in allowed_devices:
+            file.write(mac_address + "\n")
 
 # Function to scan for nearby Bluetooth devices
 def scan_devices():
@@ -19,67 +39,61 @@ def scan_devices():
             bluetooth.cancel_discovery()
             result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
         else:
-            devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
+            # Check if the device is authenticated
+            if not authentication.is_authenticated(addr):
+                result_label.config(text="Device is not authenticated!")
+            else:
+                # Check if the file is malicious
+                if av.is_malicious(addr):
+                    result_label.config(text="File from unauthorized device is malicious!")
+                else:
+                    # Check if the packet is valid
+                    if not packet_filtering.is_valid_packet(addr):
+                        result_label.config(text="Invalid packet received!")
+                    else:
+                        # Check if the firmware is up to date
+                        if not firmware_updates.is_up_to_date(addr):
+                            result_label.config(text="Firmware is not up to date!")
+                        else:
+                            # Check if the user is educated about security
+                            if not user_education.is_educated(addr):
+                                result_label.config(text="User is not educated about security!")
+                            else:
+                                # The device is connected and secure!
+                                devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
 
 # Function to pair with a selected device securely
-def secure_pairing():
-    selected_index = devices_list.curselection()
-    if selected_index:
-        selected_device = devices_list.get(selected_index)
-        addr = selected_device.split(" - ")[0]
+def secure_pairing(addr):
+    # Implement secure pairing logic here
+    # For example, you could use SSP or a PIN code for pairing.
+    # Be sure to check the security requirements of your specific use case.
 
-        # Implement your secure pairing logic here.
-        # For example, use Secure Simple Pairing (SSP) or a PIN code for pairing.
+    # Generate a random PIN code
+    pin = "%04d" % random.randint(1000, 9999)
 
-        try:
-            bluetooth.pair(addr, "1234")
-            result_label.config(text=f"Paired securely with {selected_device.split(' - ')[1]}.")
-        except bluetooth.btcommon.BluetoothError:
-            result_label.config(text="Failed to pair with device.")
+    # Prompt the user to enter the PIN code
+    pin_entry = input("Enter the PIN code: ")
 
-# Function to add a device's MAC address to the whitelist
-def add_to_whitelist():
-    # Implement your MAC address whitelist logic here.
-    # You can add the selected device's MAC address to the allowed_devices set.
-    # Be sure to save the updated whitelist to a file using save_whitelist().
-
-    selected_device = devices_list.get(devices_list.curselection())
-    addr = selected_device.split(" - ")[0]
-
-    allowed_devices.add(addr)
-    save_whitelist()
-    result_label.config(text=f"Added {selected_device.split(' - ')[1]} to the whitelist.")
-
-# Function to remove a device's MAC address from the whitelist
-def remove_from_whitelist():
-    # Implement your MAC address whitelist logic here.
-    # You can remove the selected device's MAC address from the allowed_devices set.
-    # Be sure to save the updated whitelist to a file using save_whitelist().
-
-    selected_device = devices_list.get(devices_list.curselection())
-    addr = selected_device.split(" - ")[0]
-
-    allowed_devices.remove(addr)
-    save_whitelist()
-    result_label.config(text=f"Removed {selected_device.split(' - ')[1]} from the whitelist.")
-
-# Function to handle alerts for unrecognized devices
-def handle_alert_for_unrecognized_device(addr):
-    # Check if MAC address filtering is enabled.
-    # If it is, then you can block the device from connecting.
-    # Otherwise, you can display a warning message to the user.
-
-    global mac_address_filtering
-
-    if mac_address_filtering:
-        # Block the device from connecting.
-        bluetooth.cancel_discovery()
-        result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
-        # Check if the file is malicious
-        if av.is_malicious(addr):
-            result_label.config(text="File from unauthorized device is malicious!")
+    # Check if the PIN codes match
+    if pin == pin_entry:
+        # Pair with the device
+        result_label.config(text=f"Paired with {addr} securely.")
     else:
-        # Display a warning message to the user.
-        result_label.config(text="Unauthorized device attempting to connect. MAC address filtering is not enabled.")
+        # The PIN codes do not match
+        result_label.config(text="PIN codes do not match!")
 
-# Function to save the whitelist to a file
+# Function to monitor incoming Bluetooth connections for unauthorized devices
+def monitor_connections():
+    while True:
+        client_sock, client_info = server_sock.accept()
+        client_mac = client_info[0]
+
+        if client_mac not in allowed_devices:
+            # Send a warning message to the user
+            result_label.config(text="Unauthorized device attempting to connect!")
+
+        client_sock.close()
+
+# Function to check for Man-in-the-Middle (MITM) attacks
+def check_for_mitm_attacks():
+    # Implement logic to check for MIT
