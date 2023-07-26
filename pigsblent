@@ -1,91 +1,73 @@
-import tkinter as tk
-import tkinter.ttk as ttk
-import serial
-import os
-import random
-
-def scan_for_openthread_devices():
-  # Scan for OpenThread devices.
-  devices = radio.scan()
-
-  # Look for OpenThread devices.
-  for device in devices:
-    if device.thread_mode == 1:
-      print(device.name, device.address)
-
-def send_devices_to_desktop_application():
-  # Send the devices to the desktop application.
-  with serial.Serial('COM3', 9600, timeout=1) as ser:
-    for device in devices:
-      ser.write(device.name.encode('utf-8'))
-      ser.write(device.address.encode('utf-8'))
-
-def disable_openthread_networks():
-  # Disable any OpenThread networks.
-  for device in devices:
-    if device.thread_mode == 1:
-      radio.disable_network(device.address)
-
-def get_stream_information():
-  # Get the stream information.
-  with serial.Serial('COM3', 9600, timeout=1) as ser:
-    ser.write('get_stream_information'.encode('utf-8'))
-    stream_information = ser.readline().decode('utf-8').strip()
-    return stream_information
-
-def disable_networks_on_button_press():
-  # Check if the button has been pressed.
-  if microbit.button_a.is_pressed():
-    # Disable all OpenThread networks.
-    disable_openthread_networks()
-
-def flash_device():
-  # Flash the device with the hardware code.
-  with serial.Serial('COM3', 9600, timeout=1) as ser:
-    ser.write('flash_device'.encode('utf-8'))
-
-def pair_with_microbit():
-  # Pair the device with the microbit.
-  with serial.Serial('COM3', 9600, timeout=1) as ser:
-    ser.write('pair_with_microbit'.encode('utf-8'))
-
-def flash_firmware():
-  # Flash the firmware of the microbit with the Python script.
-  with serial.Serial('COM3', 9600, timeout=1) as ser:
-    ser.write('flash_firmware'.encode('utf-8'))
-    ser.write(os.path.abspath('your_python_script.py').encode('utf-8'))
-
-def create_icon(type):
-  # Create an icon for the list item.
-  if type == 'btle':
-    icon = 'btle.png'
-  elif type == 'bluetooth le':
-    icon = 'bluetoothle.png'
-  else:
-    icon = 'ble.png'
-  return tk.PhotoImage(file=icon)
-
-def create_list_item(type, text, background_color):
-  # Create a list item with an icon and text.
-  icon = create_icon(type)
-  item = tk.Label(text=text, image=icon, compound='left', bg=background_color)
-  item.pack()
-
+# Main application
 def main():
-  # Create the window.
-  window = tk.Tk()
+    create_files()
+    load_whitelist()
+    load_blacklist()
 
-  # Set the theme to dark.
-  ttk.theme_use('dark')
+    # Create the main window.
+    root = tk.Tk()
+    root.title("Bluetooth Security App")
 
-  # Create the list.
-  listbox = tk.Listbox(window)
-  listbox.pack()
+    # Create a label to display the status messages.
+    result_label = tk.Label(root)
+    result_label.pack()
 
-  # Add the list items.
-  create_list_item('btle', 'Bluetooth Low Energy', '#c0ffee')
-  create_list_item('bluetooth le', 'Bluetooth Low Energy', '#c0ffee')
-  create_list_item('ble', 'Bluetooth Low Energy', '#c0ffee')
-  create_list_item('btle', 'OpenThread', '#ff7f50')
-  create_list_item('bluetooth le', 'OpenThread', '#ff7f50')
-  create_list_item('ble', 'OpenThread', '#ff7f50
+    # Create a button to scan for nearby devices.
+    scan_button = tk.Button(root, text="Scan", command=scan_devices)
+    scan_button.pack()
+
+    # Create a list box to display the nearby devices.
+    devices_list = tk.Listbox(root)
+    devices_list.pack()
+
+    # Create a checkbox to enable/disable MAC address filtering.
+    mac_address_filtering_checkbox = tk.Checkbutton(root, text="Enable MAC address filtering", onvalue=True, offvalue=False)
+    mac_address_filtering_checkbox.pack()
+
+    # Create a button to pair with a selected device.
+    pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR)))
+    pair_button.pack()
+
+    # Create a drop-down menu to select the sorting method.
+    sorting_menu = tk.OptionMenu(root, "", "Bandwidth usage", "RSSI", "Number of attributes", "Network protocol")
+    sorting_menu.pack()
+
+    # Create a checkbox to enable/disable filtering by network attributes.
+    filter_by_attributes_checkbox = tk.Checkbutton(root, text="Filter by network attributes", onvalue=True, offvalue=False)
+    filter_by_attributes_checkbox.pack()
+
+    # Start the main loop.
+    root.mainloop()
+
+# Check if MAC address filtering is enabled.
+if mac_address_filtering_checkbox.get():
+    mac_address_filtering = True
+else:
+    mac_address_filtering = False
+
+# Scan for nearby devices.
+scan_devices()
+
+# Display the list of nearby devices.
+for addr, name, device_class in nearby_devices:
+    if mac_address_filtering and not addr in allowed_devices:
+        # Block the device from connecting.
+        bluetooth.cancel_discovery()
+        result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
+    else:
+        if filter_by_attributes_checkbox.get():
+            # Check if the device has the desired attributes.
+            if has_attributes(addr):
+                devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
+        else:
+            devices_list.insert(tk.END, f"{addr} - {name} - {device_class}")
+
+# Sort the list of devices based on the selected sorting method.
+if sorting_menu.get() == "Bandwidth usage":
+    devices_list.sort(key=lambda device: device.bandwidth_usage)
+elif sorting_menu.get() == "RSSI":
+    devices_list.sort(key=lambda device: device.rssi)
+elif sorting_menu.get() == "Number of attributes":
+    devices_list.sort(key=lambda device: device.number_of_attributes)
+elif sorting_menu.get() == "Network protocol":
+    devices_list.sort(key=lambda device: device.network_protocol)
