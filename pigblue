@@ -1,5 +1,6 @@
 import tkinter as tk
 import bluetooth
+import av
 
 # Set of allowed MAC addresses
 allowed_devices = set()
@@ -63,7 +64,7 @@ def remove_from_whitelist():
     result_label.config(text=f"Removed {selected_device.split(' - ')[1]} from the whitelist.")
 
 # Function to handle alerts for unrecognized devices
-def handle_unrecognized_device(addr):
+def handle_alert_for_unrecognized_device(addr):
     # Check if MAC address filtering is enabled.
     # If it is, then you can block the device from connecting.
     # Otherwise, you can display a warning message to the user.
@@ -74,15 +75,11 @@ def handle_unrecognized_device(addr):
         # Block the device from connecting.
         bluetooth.cancel_discovery()
         result_label.config(text="Unauthorized device attempting to connect! MAC address: " + addr)
+        # Check if the file is malicious
+        if av.is_malicious(addr):
+            result_label.config(text="File from unauthorized device is malicious!")
     else:
         # Display a warning message to the user.
         result_label.config(text="Unauthorized device attempting to connect. MAC address filtering is not enabled.")
 
 # Function to save the whitelist to a file
-def save_whitelist():
-    # Implement your whitelist saving logic here.
-    # You can save the allowed_devices set to a file.
-
-    with open("whitelist.txt", "w") as f:
-        for addr in allowed_devices:
-            f.write(addr + "\n
