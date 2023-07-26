@@ -1,1 +1,70 @@
 
+import tkinter as tk
+import tkinter.ttk as ttk
+import serial
+
+def scan_for_openthread_devices():
+  # Scan for OpenThread devices.
+  devices = radio.scan()
+
+  # Look for OpenThread devices.
+  for device in devices:
+    if device.thread_mode == 1:
+      print(device.name, device.address)
+
+def send_devices_to_desktop_application():
+  # Send the devices to the desktop application.
+  with serial.Serial('COM3', 9600, timeout=1) as ser:
+    for device in devices:
+      ser.write(device.name.encode('utf-8'))
+      ser.write(device.address.encode('utf-8'))
+
+def disable_openthread_networks():
+  # Disable any OpenThread networks.
+  for device in devices:
+    if device.thread_mode == 1:
+      radio.disable_network(device.address)
+
+def get_stream_information():
+  # Get the stream information.
+  with serial.Serial('COM3', 9600, timeout=1) as ser:
+    ser.write('get_stream_information'.encode('utf-8'))
+    stream_information = ser.readline().decode('utf-8').strip()
+    return stream_information
+
+def disable_networks_on_button_press():
+  # Check if the button has been pressed.
+  if microbit.button_a.is_pressed():
+    # Disable all OpenThread networks.
+    disable_openthread_networks()
+
+def flash_device():
+  # Flash the device with the hardware code.
+  with serial.Serial('COM3', 9600, timeout=1) as ser:
+    ser.write('flash_device'.encode('utf-8'))
+
+def pair_with_microbit():
+  # Pair the device with the microbit.
+  with serial.Serial('COM3', 9600, timeout=1) as ser:
+    ser.write('pair_with_microbit'.encode('utf-8'))
+
+def main():
+  # Create the window.
+  window = tk.Tk()
+
+  # Set the theme to dark.
+  ttk.theme_use('dark')
+
+  # Create the button to flash the device.
+  flash_device_button = tk.Button(window, text='Flash Device', command=flash_device)
+  flash_device_button.pack()
+
+  # Create the button to pair with the microbit.
+  pair_with_microbit_button = tk.Button(window, text='Pair with Microbit', command=pair_with_microbit)
+  pair_with_microbit_button.pack()
+
+  # Start the window.
+  window.mainloop()
+
+if __name__ == "__main__":
+  main()
