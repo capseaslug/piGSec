@@ -1,11 +1,6 @@
 import tkinter as tk
 import bluetooth
-import av
-import encryption
-import authentication
-import packet_filtering
-import firmware_updates
-import user_education
+import random
 
 # Set of allowed MAC addresses
 allowed_devices = set()
@@ -27,6 +22,10 @@ def save_whitelist():
     with open("whitelist.txt", "w") as file:
         for mac_address in allowed_devices:
             file.write(mac_address + "\n")
+
+# Function to check if a device's MAC address is allowed
+def is_allowed_device(addr):
+    return addr in allowed_devices
 
 # Function to scan for nearby Bluetooth devices
 def scan_devices():
@@ -134,7 +133,7 @@ def main():
     scan_button.pack()
 
     # Create a button to pair with a selected device.
-    pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR)))
+    pair_button = tk.Button(root, text="Pair", command=lambda: secure_pairing(devices_list.get(tk.ANCHOR).split(" - ")[0]))
     pair_button.pack()
 
     # Create a label to display status messages.
@@ -146,4 +145,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
